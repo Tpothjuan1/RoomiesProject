@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <title>Tasks Assgined to me</title>
+        <meta name="description"
+            content="Page that shows a table with several Tasks">
+        <meta name="author" content="Juan Sanchez Moreno">
+        <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+            rel="stylesheet"
+            integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+            crossorigin="anonymous">
+
+        <!--NAVBAR-->
+        <div class="container">
+            <nav class="navbar navbar-expand-lg navbar-light bg-light">
+                <a class="navbar-brand" href="/seemytasks">Tasks</a>
+                <button class="navbar-toggler" type="button"
+                    data-toggle="collapse"
+                    data-target="#navbarSupportedContent"
+                    aria-controls="navbarSupportedContent" aria-expanded="false"
+                    aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse"
+                    id="navbarSupportedContent">
+                    <ul class="navbar-nav mr-auto">
+                        <!--INSERT NEW NAV ELEMENTS HERE-->
+                        <li class="nav-item active">
+                            <a class="nav-link" href="/seemytasks">My Tasks
+                                <span
+                                    class="sr-only">(current)</span></a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/seegroupstasks">Group's
+                                Tasks</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/seeunassignedtasks">Unassigned
+                                Tasks</a>
+                        </li>
+
+                    </ul>
+
+                </div>
+            </nav>
+        </div>
+    </head>
+
+    <body>
+        <div class="container my-5">
+            <!--Print out errors-->
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <div class="alert alert-danger">
+                <ul class="mb-0">
+                    {% for message in messages %}
+                    <li>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <!--don't print rows if empty-->
+            {% if rows %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Task Id</th>
+                        <th>Brief description</th>
+                        <th>Due Date</th>
+                        <th>Priority</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <!--With blueprints need to add bp to method-->
+                        <td><a href="{{ url_for('task_bp.task', tnum=row[0]) }}">{{
+                                row[0] }}</a></td>
+                        <td>{{ row[1] }}</td>
+                        <td>{{ row[2] }}</td>
+                        <!--Priority-->
+                        <td>
+                            {% if row[3] <= 1 %}
+                            High
+                            {% elif row[3] == 2 %}
+                            Medium
+                            {% elif row[3] == 3 %}
+                            Low
+                            {% else %}
+                            {{ row[3] }}
+                            {% endif %}
+                        </td>
+                        <!--Action Button-->
+                        {% if page == "mytasks" %}
+                        <td>
+                            <!--change button to snooze if nudged-->
+                            {% if row[3] == 0 %}
+                                <form method="post"
+                                    action="{{ url_for('task_bp.Snooze', tid=row[0]) }}">
+                                    <button type="submit" class="sm-btn btn-warning">Snooze</button>
+                                </form>
+                            {% else %}
+                                <form method="post"
+                                    action="{{ url_for('task_bp.CompleteTaskTable', tid = row[0]) }}">
+                                    <button type="submit" class="sm-btn btn-success">Mark
+                                        as Done</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    {% elif page == "grouptasks" %}
+                            {% if row[3] == 0 %}
+                                <td>
+                                        <button class="sm-btn" disabled>Nudged</button>
+                                </td>
+                            {% else %}
+                                <td>
+                                    <form method="post"
+                                        action="{{ url_for('task_bp.ChangeNudge', tid=row[0]) }}">
+                                        <button type="submit" class="sm-btn btn-danger">Nudge</button>
+                                    </form>
+                                </td>
+                            {% endif %}
+                    {% else %}
+                        <td>
+                            <form method="post"
+                                action="{{ url_for('task_bp.AcceptTaskTable', tid=row[0]) }}">
+                                <button type="submit" class="sm-btn btn-success">Assign
+                                    to me</button>
+                            </form>
+                        </td>
+                    {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+
+            <a href="/" class="btn btn-primary mt-4">Go back to home page</a>
+        </div>
+    </body>
+</html>

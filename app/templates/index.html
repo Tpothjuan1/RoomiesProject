@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Roomies - Home</title>
+    <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+            rel="stylesheet"
+            integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+            crossorigin="anonymous">
+    <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script
+            src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script
+            src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.js'></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev, next today',
+                    center: 'title',
+                    right: 'dayGridMonth, timeGridWeek, timeGridDay',
+                },
+                events: '/getevents',
+                eventColor: '#0000FF',
+                dateClick: function (info) {
+                    var title = prompt('Event Title:');
+                    if (title) {
+                        var event = {
+                            title: title,
+                            start: info.dateStr,
+                            allDay: info.allDay,
+                        };
+                        calendar.addEvent(event);
+
+                        // send event to SQL database
+                        fetch('/addevent', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(event),
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                console.log('Event added:', data);
+                            })
+                            .catch((error) => {
+                                console.error('Error adding event:', error);
+                            });
+                    }
+                }
+
+            });
+            calendar.render();
+        });
+    </script>
+
+</head>
+<style>
+    .error {
+        color: red;
+    }
+</style>
+<body>
+<div class="container">
+    {% if session['logged_in'] %}
+        {% set colsize = "col-9 mb-4 mx-2" %}
+    {% else %}
+        {% set colsize = "col-12 mb-4 mx-2" %}
+    {% endif %}
+
+    <div class="row">
+        <div class="{{ colsize }}">
+            <div class="row mb-4 px-0">
+                {% if session['username'] %}
+                    <h1>Hello, {{ session['username'] }}!</h1>
+                    <!-- button to show tasks -->
+
+                    <div class="my-2">
+                        {% if session['code'] %}
+                            <a href="/seemytasks"
+                               class="btn btn-sm btn-outline-primary float-left mr-2">Show
+                                Tasks</a>
+                            <a href="/createtask"
+                               class="btn btn-sm btn-outline-primary float-left">Create
+                                Task</a>
+                        {% endif %}
+                        <a href="/logout"
+                           class="btn btn-sm btn-danger float-left">Logout</a>
+                    </div>
+
+                    {% if session['code'] %}
+                    <!-- Add nudge notification if any task has priority 0 -->
+                        {% if nudge_count > 0 %}
+                            <div class="alert alert-danger" role="alert">
+                                You have {{ nudge_count }} task(s) reminders. Check them out!
+                            </div>
+                        {% endif %}
+                        <div class="col-12 card mt-4 bg-light border-secondary">
+                            <div id='calendar' style='height: 100px; width: 100%;'></div>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <h1>Hello, Guest!</h1>
+                    <div class="col-1">
+                        <a href="/login" class="btn btn-outline-secondary">Login</a>
+                    </div>
+                    |
+                    <div class="col-1"><a href="/register"
+                                          class="btn btn-outline-secondary">Register</a>
+                    </div>
+
+                {% endif %}
+            </div>
+            {% if session['username'] and session['code'] == '' %}
+            <div class="card p-4 bg-light border-secondary">
+                <div class="row">
+                    <div class="col-6 my-auto">
+                        {% if session['username'] %}
+                            <form action="/join_group" method="post">
+                                <h3>Join a Group</h3>
+                                <div class="form-group mb-2">
+                                    <label for="group_code"
+                                           style="display: none">Enter
+                                        Group Code:</label>
+                                    <input class="form-control" type="text"
+                                           id="group_code" name="group_code"
+                                           required
+                                           placeholder="Group Code:">
+                                </div>
+                                <button class="btn btn-primary"
+                                        type="submit"
+                                        value="Join Group">Submit
+                                </button>
+                            </form>
+                        {% else %}
+                            <h3>Sign in to join a group</h3>
+                        {% endif %}
+                    </div>
+                    <div class="col-6 my-auto">
+                        {% if session['username'] %}
+                            <form action="/create_group" method="post">
+                                <h3>Create a Group</h3>
+                                <div class="form-group">
+                                    <label for="group_name"
+                                           style="display: none">Enter Group
+                                        Name:</label>
+                                    <input class="form-control mb-1"
+                                           type="text"
+                                           id="group_name" name="group_name"
+                                           required placeholder="Group Name:">
+                                </div>
+                                <button class="btn btn-primary"
+                                        type="submit"
+                                        value="Join Group">Create Group
+                                </button>
+                            </form>
+                        {% else %}
+                            <h3>Sign in to create a group</h3>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% if session['logged_in'] %}
+                {% set alig="text-left" %}
+            {% else %}
+                {% set alig="text-center" %}
+            {% endif %}
+            <div
+                    class="card mt-4 p-4 bg-light border-secondary {{ alig }}"
+                    style="height: 175px">
+                {% if user_groups %}
+                    <h3>Your Group</h3>
+                    <ul class="list-group">
+                        {% for group in user_groups %}
+                            <li class="list-group-item">
+                                {{ group.group_name }} - {{ group.code }}
+
+                                <form
+                                        action="{{ url_for('group.leave_group', group_id=group.id) }}"
+                                        method="post" class="float-right">
+                                    <input type="hidden" name="group_id"
+                                           value="{{ group.id }}">
+                                    <button type="submit"
+                                            class="btn btn-sm btn-outline-danger">Leave
+                                        Group
+                                    </button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    {% if session['username'] and session['code'] == '' %}
+                        <div class="my-auto mx-auto">
+                            <h3>You are not a part of a group</h3>
+                        </div>
+                    {% else %}
+                        <div class="my-auto mx-auto">
+                            <h3>Sign in to create a group</h3>
+                        </div>
+                    {% endif %}
+
+                {% endif %}
+            </div>
+
+        </div>
+        <!--Side bar-->
+        {% if session['logged_in'] and session['code'] %}
+            <div class="col">
+                <br>
+                <br>
+                <br>
+                {% if userTasks|length != 0 %}
+                <div class="row">
+                    <div class="fs-4 mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16"
+                             height="16" fill="currentColor"
+                             class="bi bi-card-checklist" viewBox="0 0 16 16"
+                             data-darkreader-inline-fill
+                             style="--darkreader-inline-fill: currentColor;">
+                            <path
+                                    d="M14.5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5zm-13-1A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2z"></path>
+                            <path
+                                    d="M7 5.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m-1.496-.854a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0l-.5-.5a.5.5 0 1 1 .708-.708l.146.147 1.146-1.147a.5.5 0 0 1 .708 0M7 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m-1.496-.854a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0l-.5-.5a.5.5 0 0 1 .708-.708l.146.147 1.146-1.147a.5.5 0 0 1 .708 0"></path>
+                        </svg>
+                        Some of your Tasks
+                    </div>
+
+                    <ul class="list-group">
+                        {% for usertask in userTasks %}
+                            <li class="list-group-item">
+                                {{ usertask['description'] }}
+                                <br>
+                                {{ usertask['dueDate'] }}
+                                <br>
+                                <a
+                                        href="{{ url_for('task_bp.task', tnum=usertask[0]) }}">See
+                                    Task</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                <br>
+                <br>
+                {% if unassignedTasks|length != 0 %}
+                <div class="row ml-4">
+                    <div class="fs-4 mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16"
+                             height="16" fill="currentColor"
+                             class="bi bi-card-checklist" viewBox="0 0 16 16"
+                             data-darkreader-inline-fill
+                             style="--darkreader-inline-fill: currentColor;">
+                            <path
+                                    d="M14.5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5zm-13-1A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2z"></path>
+                            <path
+                                    d="M7 5.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m-1.496-.854a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0l-.5-.5a.5.5 0 1 1 .708-.708l.146.147 1.146-1.147a.5.5 0 0 1 .708 0M7 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m-1.496-.854a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0l-.5-.5a.5.5 0 0 1 .708-.708l.146.147 1.146-1.147a.5.5 0 0 1 .708 0"></path>
+                        </svg>
+                        Some Unassigned Tasks in your group
+                    </div>
+
+                    <ul class="list-group">
+                        {% for utask in unassignedTasks %}
+                            <li class="list-group-item">
+                                {{ utask['description'] }}
+                                <br>
+                                {{ utask['dueDate'] }}
+                                <br>
+                                <a
+                                        href="{{ url_for('task_bp.task', tnum=utask[0]) }}">See
+                                    Task</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+
+                </div>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+</body>
+</html>
